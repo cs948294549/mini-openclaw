@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 from skills.weather_skill import WeatherSkill
 from skills.switch_skill import SwitchSkill
@@ -34,15 +35,15 @@ class MiniOpenClaw:
             {
                 "name": "设备接入位置查询",
                 "description": "通过查询相关联交换机的arp、mac、lldp综合信息，获取设备在网络中的接入位置",
-                "instructions": "1.登录10.92.42.64交换机，通过arp信息查出设备IP对应的MAC地址\n2.查询该mac地址出接口\n3.查询交换机lldp信息，关联mac的出接口定位下一台交换机名称，参考命令dis lldp nei brie\n4.根据交换机名称查询交换机IP,这里需要使用device_ip的技能去获取下一个交换机的IP\n5.根据查到的交换机IP，先查询mac出接口，再根据出接口查询lldp，直到出接口不在lldp列表中，最后返回所有相关联的交换机IP及端口名称",
+                "instructions": "1.登录10.92.42.64交换机，通过arp信息查出设备IP对应的MAC地址, 参考命令 dis arp all | in ip\n2.查询该mac地址出接口，参考命令 dis mac-add | in mac地址\n3.查询交换机lldp信息，关联mac的出接口定位下一台交换机名称，参考命令dis lldp nei brie\n4.根据交换机名称查询交换机IP,这里需要使用device_ip的技能去获取下一个交换机的IP\n5.根据查到的交换机IP，先查询mac出接口，再根据出接口查询lldp，直到出接口不在lldp列表中，最后返回所有相关联的交换机IP及端口名称",
                 "parameters": ["dev_ip"]
             },
         ]
         # 技能描述（用于默认提示词）
         self.skill_descriptions = {
-            'weather': '查询天气信息',
-            'switch': '执行交换机命令',
-            'device_ip': '通过设备名查询设备IP',
+            'weather': '查询天气信息, 参数 location',
+            'switch': '执行交换机命令, 参数 ip:交换机IP,cmds: ["待执行命令"], vendor: "huawei/h3c/cisco等，可不填"',
+            'device_ip': '通过设备名查询设备IP, 参数 name: 设备名称',
         }
     
     def call_doubao(self, prompt, model="doubao-seed-1-6-251015"):
@@ -103,7 +104,8 @@ class MiniOpenClaw:
         for sop in self.sop_list:
             simplified_sop = {
                 "name": sop.get("name"),
-                "description": sop.get("description")
+                "description": sop.get("description"),
+                "parameters": sop.get("parameters"),
             }
             simplified_sop_list.append(simplified_sop)
         
@@ -121,9 +123,13 @@ class MiniOpenClaw:
 例如：
 用户请求：检查10.92.42.60的健康状态
 响应：{{"selected_sop": "交换机健康检查", "parameters": {{"ip": "10.92.42.60"}}}}
-
 用户请求：北京的天气怎么样？
 响应：{{"selected_sop": "天气查询", "parameters": {{"location": "北京"}}}}
+
+若缺少参数，则直接返回信息
+例如：
+{{"selected_sop": "选择的SOP名称","status": "failed", "msg":"原因"}}
+
 """
         # 调用豆包AI
         print("=2=发送给豆包AI的提示词：", prompt)
@@ -163,8 +169,10 @@ class MiniOpenClaw:
         results = []
         previous_results = []
         current_step = 1
-        max_steps = 10  # 防止无限循环
-        
+        max_steps = 20  # 防止无限循环
+
+        # 附加可用技能
+        skill_list_str = "\n".join([f"- {skill}: {desc}" for skill, desc in self.skill_descriptions.items()])
         # 逐个执行任务，根据前一个任务的结果动态调整
         while current_step <= max_steps:
             # 构建提示词，让AI根据当前状态生成下一个任务
@@ -178,8 +186,7 @@ SOP指令：{sop_instructions}
 {_previous_str}
 
 可用的技能：
-- weather: 查询天气信息
-- switch: 执行交换机命令
+{skill_list_str}
 
 请返回一个JSON格式的响应，包含：
 - task: 下一个要执行的任务（包含skill和params）
@@ -319,6 +326,9 @@ SOP指令：{sop_instructions}
                 print("找到的sop流程", sop_result)
                 if sop_result:
                     sop_name = sop_result.get('selected_sop')
+                    status = sop_result.get('status', None)
+                    if status and status=="failed":
+                        return "用户输入缺失参数，原因{}".format(sop_result)
                     parameters = sop_result.get('parameters', {})
                     instructions = sop_result.get('instructions')
                     if sop_name:
@@ -344,7 +354,7 @@ if __name__ == "__main__":
     # 显示可用技能
     print("可用技能：", mini_openclaw.get_available_skills())
     
-    # 显示SOP列表
+    # 显示SOP列表f
     print("\n可用SOP流程：")
     for sop in mini_openclaw.sop_list:
         print(f"- {sop['name']}: {sop['description']}")
@@ -356,5 +366,5 @@ if __name__ == "__main__":
 
     # 测试AI处理SOP请求（设备接入位置查询）
     print("\n测试AI处理SOP请求（设备接入位置查询）：")
-    ai_sop_result = mini_openclaw.process_with_ai("帮我查一下设备192.168.110.153 接在哪个交换机下")
+    ai_sop_result = mini_openclaw.process_with_ai("帮我查一下设备192.168.110.153接在哪个交换机下")
     print("AI处理设备接入位置查询结果：", ai_sop_result)
