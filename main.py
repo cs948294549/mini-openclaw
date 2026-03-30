@@ -35,7 +35,7 @@ class MiniOpenClaw:
             {
                 "name": "设备接入位置查询",
                 "description": "通过查询相关联交换机的arp、mac、lldp综合信息，获取设备在网络中的接入位置",
-                "instructions": "1.登录10.92.42.64交换机，通过arp信息查出设备IP对应的MAC地址, 参考命令 dis arp all | in ip\n2.查询该mac地址出接口，参考命令 dis mac-add | in mac地址\n3.查询交换机lldp信息，关联mac的出接口定位下一台交换机名称，参考命令dis lldp nei brie\n4.根据交换机名称查询交换机IP,这里需要使用device_ip的技能去获取下一个交换机的IP\n5.根据查到的交换机IP，先查询mac出接口，再根据出接口查询lldp，直到出接口不在lldp列表中，最后返回所有相关联的交换机IP及端口名称",
+                "instructions": "1.登录10.92.42.64交换机，通过arp信息查出设备IP对应的MAC地址, 参考命令 dis arp all | in ip\n2.查询该mac地址出接口，参考命令 dis mac-add | in mac地址,如果接口是eth-trunk端口，需要通过dis eth-trunk xx 查出真实的物理口地址\n3.查询交换机lldp信息，关联mac的出接口定位下一台交换机名称，参考命令dis lldp nei brie\n4.根据交换机名称查询交换机IP,这里需要使用device_ip的技能去获取下一个交换机的IP\n5.根据查到的交换机IP，先查询mac出接口，再根据出接口查询lldp，直到出接口不在lldp列表中，最后返回所有相关联的交换机IP及端口名称",
                 "parameters": ["dev_ip"]
             },
         ]
@@ -366,5 +366,5 @@ if __name__ == "__main__":
 
     # 测试AI处理SOP请求（设备接入位置查询）
     print("\n测试AI处理SOP请求（设备接入位置查询）：")
-    ai_sop_result = mini_openclaw.process_with_ai("帮我查一下设备192.168.110.153接在哪个交换机下")
+    ai_sop_result = mini_openclaw.process_with_ai("帮我查一下设备192.168.120.5接在哪个交换机下")
     print("AI处理设备接入位置查询结果：", ai_sop_result)
