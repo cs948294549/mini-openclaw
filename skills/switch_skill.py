@@ -3,7 +3,7 @@ import json
 
 class SwitchSkill:
     def __init__(self):
-        self.target_base = "http://192.168.110.153:8000/"
+        self.target_base = "http://192.168.170.252:8000/"
     
     def run_switch_command(self, ip, cmds, vendor):
         """执行交换机命令"""

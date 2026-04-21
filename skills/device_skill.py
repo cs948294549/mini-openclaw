@@ -36,5 +36,5 @@ class DeviceSkill:
 
     def handle_request(self, params):
         """处理设备查询请求"""
-        location = params.get('name', 'DK-35F-A004')
+        location = params.get('name', None)
         return self.get_device(location)
